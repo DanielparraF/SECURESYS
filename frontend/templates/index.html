@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SecureSystem — IS2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+  <div id="app">
+    <!-- PANTALLA DE LOGIN -->
+    <section id="screen-login" class="screen active">
+      <div class="login-bg">
+        <div class="grid-lines"></div>
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+      </div>
+      <div class="login-panel">
+        <div class="brand">
+          <div class="brand-icon">
+            <svg viewBox="0 0 40 40" fill="none">
+              <polygon points="20,2 38,11 38,29 20,38 2,29 2,11" stroke="currentColor" stroke-width="2" fill="none" />
+              <polygon points="20,10 30,15 30,25 20,30 10,25 10,15" fill="currentColor" opacity="0.3" />
+              <circle cx="20" cy="20" r="4" fill="currentColor" />
+            </svg>
+          </div>
+          <div class="brand-text">
+            <span class="brand-name">SECURE<em>SYS</em></span>
+            <span class="brand-sub">Ingeniería de Software II</span>
+          </div>
+        </div>
+
+        <div class="panel-tabs">
+          <button class="tab active" data-tab="login">Iniciar Sesión</button>
+          <button class="tab" data-tab="register">Registrar</button>
+        </div>
+
+        <!-- Tab Login -->
+        <div id="tab-login" class="tab-content active">
+          <!-- Paso 1: Credenciales -->
+          <div id="step-credentials" class="auth-step active">
+            <div class="step-indicator">
+              <div class="step-dot active">1</div>
+              <div class="step-line"></div>
+              <div class="step-dot">2</div>
+            </div>
+            <h2>Credenciales</h2>
+            <div class="field">
+              <label>Usuario</label>
+              <input type="text" id="login-username" placeholder="admin" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label>Contraseña</label>
+              <input type="password" id="login-password" placeholder="••••••••" />
+            </div>
+            <button class="btn-primary" onclick="loginStep1()">
+              <span>Verificar credenciales</span>
+              <svg viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" />
+              </svg>
+            </button>
+            <div id="login-error-1" class="error-msg"></div>
+          </div>
+
+          <!-- Paso 2: 2FA -->
+          <div id="step-2fa" class="auth-step">
+            <div class="step-indicator">
+              <div class="step-dot done">✓</div>
+              <div class="step-line active"></div>
+              <div class="step-dot active">2</div>
+            </div>
+            <h2>Segundo Factor</h2>
+            <p class="step-desc">Ingresa el código de 6 dígitos de tu autenticador (Google Authenticator / Authy)</p>
+            <div class="totp-input-group">
+              <input type="text" id="totp-input" maxlength="6" placeholder="000000" class="totp-input"
+                oninput="formatTOTP(this)" />
+            </div>
+            <div class="demo-hint">
+              <span class="hint-label">💡 Demo</span>
+              <button class="btn-hint" onclick="fillCurrentTOTP()">Obtener código actual</button>
+            </div>
+            <button class="btn-primary" onclick="loginStep2()">
+              <span>Verificar 2FA</span>
+              <svg viewBox="0 0 20 20" fill="currentColor">
+                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+            <button class="btn-ghost" onclick="backToStep1()">← Volver</button>
+            <div id="login-error-2" class="error-msg"></div>
+          </div>
+        </div>
+
+        <!-- Tab Registro -->
+        <div id="tab-register" class="tab-content">
+          <h2>Nuevo Usuario</h2>
+          <div class="field">
+            <label>Nombre completo</label>
+            <input type="text" id="reg-name" placeholder="María García" />
+          </div>
+          <div class="field">
+            <label>Usuario</label>
+            <input type="text" id="reg-username" placeholder="maria.garcia" />
+          </div>
+          <div class="field">
+            <label>Contraseña</label>
+            <input type="password" id="reg-password" placeholder="••••••••" />
+          </div>
+          <button class="btn-primary" onclick="register()">
+            <span>Crear cuenta</span>
+          </button>
+          <div id="reg-error" class="error-msg"></div>
+
+          <!-- QR Modal inline -->
+          <div id="qr-section" class="qr-section hidden">
+            <div class="qr-box">
+              <h3>Configura tu autenticador</h3>
+              <p>Escanea este QR con Google Authenticator o Authy</p>
+              <img id="qr-image" src="" alt="QR Code" />
+              <div class="secret-box">
+                <span class="secret-label">Clave manual:</span>
+                <code id="totp-secret-display"></code>
+              </div>
+              <button class="btn-primary" onclick="switchToLogin()">Ir a Iniciar Sesión</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PANTALLA PRINCIPAL (autenticado) -->
+    <section id="screen-dashboard" class="screen">
+      <header class="app-header">
+        <div class="header-brand">
+          <svg viewBox="0 0 24 24" fill="none" class="header-logo">
+            <polygon points="12,2 22,7 22,17 12,22 2,17 2,7" stroke="currentColor" stroke-width="1.5" fill="none" />
+            <circle cx="12" cy="12" r="3" fill="currentColor" />
+          </svg>
+          <span>SECURE<em>SYS</em></span>
+        </div>
+        <div class="header-user">
+          <div class="user-badge">
+            <span class="user-avatar" id="header-avatar">A</span>
+            <span id="header-username">admin</span>
+          </div>
+          <button class="btn-logout" onclick="logout()">Cerrar sesión</button>
+        </div>
+      </header>
+
+      <div class="dashboard-layout">
+        <!-- SIDEBAR -->
+        <nav class="sidebar">
+          <button class="nav-item active" data-panel="panel-messages" onclick="switchPanel(this)">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.862 9.862 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                stroke="currentColor" stroke-width="1.5" />
+            </svg>
+            <span>Mensajes</span>
+          </button>
+          <button class="nav-item" data-panel="panel-log" onclick="switchPanel(this)">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                stroke="currentColor" stroke-width="1.5" />
+            </svg>
+            <span>Registro</span>
+          </button>
+          <button class="nav-item" data-panel="panel-scenarios" onclick="switchPanel(this)">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path
+                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                stroke="currentColor" stroke-width="1.5" />
+            </svg>
+            <span>Escenarios</span>
+          </button>
+          <button class="nav-item" data-panel="panel-arch" onclick="switchPanel(this)">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path
+                d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"
+                stroke="currentColor" stroke-width="1.5" />
+            </svg>
+            <span>Arquitectura</span>
+          </button>
+        </nav>
+
+        <!-- PANELES -->
+        <main class="panel-area">
+
+          <!-- Panel: Enviar Mensajes -->
+          <div id="panel-messages" class="panel active">
+            <div class="panel-header">
+              <h2>Comunicación entre Sistemas</h2>
+              <p class="panel-sub">Sistema A → Sistema B con verificación HMAC-SHA256</p>
+            </div>
+            <div class="two-col">
+              <div class="compose-area">
+                <div class="system-label sistema-a">SISTEMA A (Emisor)</div>
+                <div class="field">
+                  <label>Mensaje a enviar</label>
+                  <textarea id="msg-content" rows="4"
+                    placeholder="Escribe el mensaje a enviar al Sistema B..."></textarea>
+                </div>
+                <div class="tamper-option">
+                  <label class="toggle-label">
+                    <input type="checkbox" id="tamper-toggle" onchange="toggleTamperField()" />
+                    <span class="toggle-slider"></span>
+                    <span>Simular alteración del mensaje (demo)</span>
+                  </label>
+                </div>
+
+                <div id="tamper-field" class="field hidden">
+                  <label>Mensaje alterado (lo que verá Sistema B)</label>
+                  <textarea id="tamper-content" rows="3" placeholder="Escribe aquí el mensaje modificado..."></textarea>
+                </div>
+                <button class="btn-primary" onclick="sendMessage()">
+                  <svg viewBox="0 0 20 20" fill="currentColor">
+                    <path
+                      d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                  </svg>
+                  <span>Enviar y Verificar</span>
+                </button>
+              </div>
+
+              <div class="result-area" id="msg-result">
+                <div class="system-label sistema-b">SISTEMA B (Receptor)</div>
+                <div class="empty-state">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                      stroke="currentColor" stroke-width="1.5" />
+                  </svg>
+                  <span>Esperando mensaje...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel: Registro de Mensajes -->
+          <div id="panel-log" class="panel">
+            <div class="panel-header">
+              <h2>Registro de Mensajes</h2>
+              <button class="btn-ghost small" onclick="loadMessageLog()">↻ Actualizar</button>
+            </div>
+            <div id="message-log-table">
+              <div class="empty-state">No hay mensajes aún.</div>
+            </div>
+          </div>
+
+          <!-- Panel: Escenarios -->
+          <div id="panel-scenarios" class="panel">
+            <div class="panel-header">
+              <h2>Escenarios Obligatorios</h2>
+              <p class="panel-sub">Prueba cada escenario del proyecto</p>
+            </div>
+            <div class="scenarios-grid">
+              <div class="scenario-card auth">
+                <div class="sc-icon">✓</div>
+                <h3>Auth correcta</h3>
+                <p>Credenciales + 2FA válidos → Acceso permitido</p>
+                <div class="sc-result pass">IMPLEMENTADO</div>
+              </div>
+              <div class="scenario-card auth fail">
+                <div class="sc-icon">✗</div>
+                <h3>Credenciales inválidas</h3>
+                <p>Usuario/contraseña incorrectos → Acceso denegado</p>
+                <div class="sc-result fail">IMPLEMENTADO</div>
+              </div>
+              <div class="scenario-card auth fail">
+                <div class="sc-icon">✗</div>
+                <h3>2FA incorrecto</h3>
+                <p>Credenciales ok, pero código TOTP errado → Denegado</p>
+                <div class="sc-result fail">IMPLEMENTADO</div>
+              </div>
+              <div class="scenario-card msg">
+                <div class="sc-icon">✓</div>
+                <h3>Mensaje íntegro</h3>
+                <p>Mensaje sin alterar, HMAC verificado → Aceptado</p>
+                <button class="btn-scenario" onclick="testIntactMessage()">Probar →</button>
+              </div>
+              <div class="scenario-card msg fail">
+                <div class="sc-icon">✗</div>
+                <h3>Mensaje alterado</h3>
+                <p>Mensaje modificado, HMAC inválido → Rechazado</p>
+                <button class="btn-scenario" onclick="testTamperedMessage()">Probar →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel: Arquitectura -->
+          <div id="panel-arch" class="panel">
+            <div class="panel-header">
+              <h2>Arquitectura del Sistema</h2>
+              <p class="panel-sub">Separación de responsabilidades y módulos</p>
+            </div>
+            <div class="arch-diagram">
+              <div class="arch-layer">
+                <div class="layer-label">FRONTEND (HTML/CSS/JS)</div>
+                <div class="arch-boxes">
+                  <div class="arch-box">UI Login</div>
+                  <div class="arch-box">UI 2FA</div>
+                  <div class="arch-box">UI Mensajes</div>
+                </div>
+              </div>
+              <div class="arch-arrow">↕ HTTP / REST API</div>
+              <div class="arch-layer">
+                <div class="layer-label">BACKEND (Flask / Python)</div>
+                <div class="arch-boxes">
+                  <div class="arch-box module-auth">AuthModule<br /><small>bcrypt</small></div>
+                  <div class="arch-box module-totp">TwoFactorModule<br /><small>pyotp TOTP</small></div>
+                  <div class="arch-box module-session">SessionModule<br /><small>UUID tokens</small></div>
+                  <div class="arch-box module-integrity">IntegrityModule<br /><small>HMAC-SHA256</small></div>
+                </div>
+              </div>
+              <div class="arch-arrow">↕ Firma / Verificación</div>
+              <div class="arch-layer">
+                <div class="layer-label">SISTEMA B (Receptor)</div>
+                <div class="arch-boxes">
+                  <div class="arch-box sistema-b-box">Verificador HMAC</div>
+                  <div class="arch-box sistema-b-box">Procesador de mensajes</div>
+                </div>
+              </div>
+            </div>
+            <div class="tradeoffs">
+              <h3>Trade-offs de Seguridad</h3>
+              <table class="tradeoff-table">
+                <thead>
+                  <tr>
+                    <th>Decisión</th>
+                    <th>Ventaja</th>
+                    <th>Costo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>TOTP como 2FA</td>
+                    <td>Sin servidor SMS, estándar RFC 6238</td>
+                    <td>Requiere app autenticadora</td>
+                  </tr>
+                  <tr>
+                    <td>bcrypt para contraseñas</td>
+                    <td>Resistente a rainbow tables</td>
+                    <td>Más lento que SHA</td>
+                  </tr>
+                  <tr>
+                    <td>HMAC-SHA256</td>
+                    <td>Integridad + autenticidad del origen</td>
+                    <td>Clave compartida necesaria</td>
+                  </tr>
+                  <tr>
+                    <td>Sesiones en memoria</td>
+                    <td>Simplicidad, sin DB</td>
+                    <td>No persiste entre reinicios</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </section>
+  </div>
+
+  <!-- TOAST NOTIFICATIONS -->
+  <div id="toast-container"></div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+
+</html>
